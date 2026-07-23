@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GMod CRT Loading Screen</title>
+  <style>
+    /* --- CRT & GLOBAL STYLES --- */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      background-color: #030305;
+      font-family: 'Courier New', Courier, monospace;
+      overflow: hidden;
+      color: #33ff66;
+    }
+
+    /* CRT Monitor Frame & Vignette */
+    #crt-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #080a0d;
+      overflow: hidden;
+      box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.95), inset 0 0 30px rgba(0, 0, 0, 0.8);
+      animation: crt-flicker 0.15s infinite alternate;
+    }
+
+    /* Curved Glass Edge Overlay */
+    #crt-container::before {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: radial-gradient(circle at center, transparent 60%, rgba(0, 0, 0, 0.8) 100%);
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    /* Scanline & Grid Effect */
+    #scanlines {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%),
+                  linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      background-size: 100% 4px, 6px 100%;
+      pointer-events: none;
+      z-index: 21;
+    }
+
+    /* CRT Flicker Animation */
+    @keyframes crt-flicker {
+      0% { opacity: 0.97; }
+      100% { opacity: 1; }
+    }
+
+    /* --- VHS ON-SCREEN DISPLAY (OSD) --- */
+    .vhs-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      padding: 30px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 10;
+      text-shadow: 0 0 6px rgba(51, 255, 102, 0.8), 0 0 12px rgba(51, 255, 102, 0.4);
+    }
+
+    .osd-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.2rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    .osd-corner-hit-alert {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2.5rem;
+      color: #ff0055;
+      text-shadow: 0 0 10px #ff0055, 0 0 20px #ff0055;
+      font-weight: 900;
+      opacity: 0;
+      transition: opacity 0.2s ease-in-out;
+      letter-spacing: 4px;
+      text-align: center;
+    }
+
+    .osd-corner-hit-alert.show {
+      opacity: 1;
+      animation: pulse-alert 0.3s infinite alternate;
+    }
+
+    @keyframes pulse-alert {
+      0% { transform: translate(-50%, -50%) scale(1); }
+      100% { transform: translate(-50%, -50%) scale(1.1); }
+    }
+
+    /* --- GMOD HUD / LOADING BAR --- */
+    .loading-card {
+      background: rgba(10, 15, 12, 0.75);
+      border: 2px solid #33ff66;
+      border-radius: 4px;
+      padding: 20px;
+      max-width: 600px;
+      box-shadow: 0 0 15px rgba(51, 255, 102, 0.2);
+      backdrop-filter: blur(2px);
+    }
+
+    .server-name {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #ffffff;
+      text-shadow: 0 0 8px #ffffff;
+      margin-bottom: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .map-name {
+      font-size: 0.95rem;
+      color: #00e5ff;
+      text-shadow: 0 0 6px #00e5ff;
+      margin-bottom: 12px;
+    }
+
+    .status-text {
+      font-size: 0.85rem;
+      color: #a0ffa0;
+      margin-bottom: 8px;
+      height: 18px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Retro Progress Bar */
+    .progress-container {
+      width: 100%;
+      height: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 1px solid #33ff66;
+      padding: 2px;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #33ff66;
+      box-shadow: 0 0 10px #33ff66;
+      transition: width 0.2s ease;
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+    }
+
+    /* --- DVD BOUNCING LOGO --- */
+    #dvd-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 140px;
+      height: 70px;
+      z-index: 5;
+      will-change: transform;
+      color: #00e5ff; /* Default color */
+      filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 15px currentColor);
+    }
+
+    #dvd-container svg {
+      width: 100%;
+      height: 100%;
+      fill: currentColor;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="crt-container">
+    <!-- CRT Overlay & Scanlines -->
+    <div id="scanlines"></div>
+
+    <!-- VHS OSD (On-Screen Display) -->
+    <div class="vhs-overlay">
+      <div class="osd-header">
+        <div>PLAY &#9654; <span id="vhs-clock">00:00:00</span></div>
+        <div>AUTO-TRACKING [SP]</div>
+      </div>
+
+      <!-- Corner Hit Celebration Popup -->
+      <div id="corner-alert" class="osd-corner-hit-alert">
+        &#9733; CORNER HIT! &#9733;
+      </div>
+
+      <!-- Bottom GMod Loading HUD -->
+      <div class="loading-card">
+        <div id="server-name" class="server-name">Connecting to Server...</div>
+        <div id="map-name" class="map-name">MAP: gm_construct</div>
+        <div id="status-text" class="status-text">Retrieving server info...</div>
+        
+        <div class="progress-container">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        
+        <div class="progress-info">
+          <span id="file-count">0 / 0 FILES</span>
+          <span id="progress-percent">0%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SVG DVD Logo -->
+    <div id="dvd-container">
+      <svg viewBox="0 0 300 150">
+        <!-- DVD Text -->
+        <g>
+          <path d="M 20,20 L 60,20 C 85,20 95,35 95,50 C 95,65 85,80 60,80 L 20,80 Z M 40,35 L 40,65 L 55,65 C 70,65 75,58 75,50 C 75,42 70,35 55,35 Z" />
+          <path d="M 90,20 L 115,20 L 135,70 L 155,20 L 180,20 L 148,80 L 122,80 Z" />
+          <path d="M 175,20 L 215,20 C 240,20 250,35 250,50 C 250,65 240,80 215,80 L 175,80 Z M 195,35 L 195,65 L 210,65 C 225,65 230,58 230,50 C 230,42 225,35 210,35 Z" />
+        </g>
+        <!-- Disc Ellipse & VIDEO text -->
+        <path d="M 20,95 Q 135,120 250,95 Q 135,108 20,95 Z"/>
+        <ellipse cx="135" cy="105" rx="120" ry="20" fill="none" stroke="currentColor" stroke-width="5"/>
+        <text x="135" y="110" font-family="'Courier New', monospace" font-weight="900" font-size="16" text-anchor="middle" letter-spacing="6">VIDEO</text>
+      </svg>
+    </div>
+  </div>
+
+  <script>
+    /* ===================================================
+       1. VHS TIMER / CLOCK
+    =================================================== */
+    let secondsElapsed = 0;
+    setInterval(() => {
+      secondsElapsed++;
+      const hrs = String(Math.floor(secondsElapsed / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((secondsElapsed % 3600) / 60)).padStart(2, '0');
+      const secs = String(secondsElapsed % 60).padStart(2, '0');
+      document.getElementById('vhs-clock').innerText = `${hrs}:${mins}:${secs}`;
+    }, 1000);
+
+    /* ===================================================
+       2. RETRO AUDIO SYNTH (Web Audio API)
+    =================================================== */
+    function playCornerSound() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        
+        // Synth chime chord for corner hit
+        const freqs = [523.25, 659.25, 783.99, 1046.50]; // C Major
+        freqs.forEach((f, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, ctx.currentTime + (i * 0.05));
+          gain.gain.setValueAtTime(0.15, ctx.currentTime + (i * 0.05));
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6 + (i * 0.05));
+          
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          
+          osc.start(ctx.currentTime + (i * 0.05));
+          osc.stop(ctx.currentTime + 0.7 + (i * 0.05));
+        });
+      } catch(e) {
+        // Audio might be blocked until user gesture, fail silently
+      }
+    }
+
+    /* ===================================================
+       3. BOUNCING DVD LOGO & CORNER HIT ALGORITHM
+    =================================================== */
+    const dvd = document.getElementById('dvd-container');
+    const colors = [
+      '#00e5ff', '#ff0055', '#33ff66', '#ffdd00', 
+      '#ff00ff', '#00ffaa', '#ff6600', '#ffffff'
+    ];
+
+    let posX = Math.random() * (window.innerWidth - 150);
+    let posY = Math.random() * (window.innerHeight - 80);
+    let baseSpeed = 2.5;
+    let vx = baseSpeed;
+    let vy = baseSpeed * 0.75;
+    let currentColorIndex = 0;
+
+    let bounceCount = 0;
+    let cornerMode = false;
+
+    function changeColor() {
+      currentColorIndex = (currentColorIndex + 1) % colors.length;
+      dvd.style.color = colors[currentColorIndex];
+    }
+
+    function triggerCornerHit() {
+      playCornerSound();
+      const alertEl = document.getElementById('corner-alert');
+      alertEl.classList.add('show');
+      setTimeout(() => alertEl.classList.remove('show'), 2000);
+    }
+
+    function resetVelocity() {
+      // Return to a nice natural angle after corner hit
+      vx = (vx > 0 ? 1 : -1) * baseSpeed;
+      vy = (vy > 0 ? 1 : -1) * (baseSpeed * (0.6 + Math.random() * 0.4));
+    }
+
+    function animate() {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      const w = dvd.offsetWidth;
+      const h = dvd.offsetHeight;
+      const maxW = W - w;
+      const maxH = H - h;
+
+      // Trigger "Corner Aiming Mode" randomly every 4-8 bounces
+      if (bounceCount >= 5 && !cornerMode && Math.random() < 0.35) {
+        cornerMode = true;
+        bounceCount = 0;
+
+        // Choose target corner based on current directional vectors
+        const targetX = vx > 0 ? maxW : 0;
+        const targetY = vy > 0 ? maxH : 0;
+
+        const dx = targetX - posX;
+        const dy = targetY - posY;
+
+        // Math: Set vy so that time-to-X-wall (dx/vx) equals time-to-Y-wall (dy/vy)
+        // vy = (dy / dx) * vx
+        if (Math.abs(dx) > 20 && Math.abs(dy) > 20) {
+          vy = (dy / dx) * vx;
+        }
+      }
+
+      posX += vx;
+      posY += vy;
+
+      let hitX = false;
+      let hitY = false;
+
+      // X-axis wall collision
+      if (posX <= 0) {
+        posX = 0;
+        vx = -vx;
+        hitX = true;
+      } else if (posX >= maxW) {
+        posX = maxW;
+        vx = -vx;
+        hitX = true;
+      }
+
+      // Y-axis wall collision
+      if (posY <= 0) {
+        posY = 0;
+        vy = -vy;
+        hitY = true;
+      } else if (posY >= maxH) {
+        posY = maxH;
+        vy = -vy;
+        hitY = true;
+      }
+
+      // Handle bounce events
+      if (hitX && hitY) {
+        // --- CORNER HIT! ---
+        changeColor();
+        triggerCornerHit();
+        cornerMode = false;
+        resetVelocity();
+      } else if (hitX || hitY) {
+        // Regular single-wall bounce
+        changeColor();
+        bounceCount++;
+        if (cornerMode) {
+          // Reset velocity if it bounced on a side wall before reaching corner
+          cornerMode = false;
+          resetVelocity();
+        }
+      }
+
+      // Apply transform
+      dvd.style.transform = `translate3d(${posX}px, ${posY}px, 0)`;
+
+      requestAnimationFrame(animate);
+    }
+
+    // Start DVD loop
+    requestAnimationFrame(animate);
+
+    // Keep logo inside bounds on browser resize
+    window.addEventListener('resize', () => {
+      posX = Math.min(posX, window.innerWidth - dvd.offsetWidth);
+      posY = Math.min(posY, window.innerHeight - dvd.offsetHeight);
+    });
+
+    /* ===================================================
+       4. GARRY'S MOD LOADING SCREEN HOOKS
+    =================================================== */
+    let totalFilesNeeded = 0;
+    let filesDownloaded = 0;
+
+    function GameDetails(servername, serverurl, mapname, maxplayers, steamid, gamemode) {
+      if (servername) document.getElementById('server-name').innerText = servername;
+      if (mapname) document.getElementById('map-name').innerText = 'MAP: ' + mapname;
+    }
+
+    function SetFilesNeeded(needed) {
+      totalFilesNeeded = needed;
+      updateProgress();
+    }
+
+    function SetFilesTotal(total) {
+      totalFilesNeeded = total;
+      updateProgress();
+    }
+
+    function DownloadingFile(fileName) {
+      filesDownloaded++;
+      document.getElementById('status-text').innerText = 'DOWNLOADING: ' + fileName;
+      updateProgress();
+    }
+
+    function SetStatusChanged(status) {
+      document.getElementById('status-text').innerText = status;
+    }
+
+    function updateProgress() {
+      let percent = 0;
+      if (totalFilesNeeded > 0) {
+        percent = Math.min(100, Math.floor((filesDownloaded / totalFilesNeeded) * 100));
+      }
+      document.getElementById('progress-bar').style.width = percent + '%';
+      document.getElementById('progress-percent').innerText = percent + '%';
+      document.getElementById('file-count').innerText = `${filesDownloaded} / ${totalFilesNeeded} FILES`;
+    }
+
+    /* ===================================================
+       5. STANDALONE BROWSER DEMO MODE
+       (Simulates GMod loading if opened outside GMod)
+    =================================================== */
+    setTimeout(() => {
+      if (totalFilesNeeded === 0) {
+        GameDetails("Retro DarkRP 1999 | Vintage Roleplay", "", "rp_downtown_v4c_v2", "32", "0", "darkrp");
+        SetFilesTotal(35);
+        
+        const fakeFiles = [
+          "materials/models/weapons/v_pistol.vmt",
+          "models/player/police.mdl",
+          "sound/ambient/city_background.wav",
+          "materials/vgui/hud/custom_radar.vtf",
+          "maps/rp_downtown_v4c_v2.bsp"
+        ];
+
+        let idx = 0;
+        const interval = setInterval(() => {
+          if (idx < fakeFiles.length) {
+            DownloadingFile(fakeFiles[idx % fakeFiles.length]);
+            idx++;
+          } else if (filesDownloaded < 35) {
+            DownloadingFile(`addons/content_pack_part_${filesDownloaded}.gma`);
+          } else {
+            SetStatusChanged("Sending client info...");
+            clearInterval(interval);
+          }
+        }, 800);
+      }
+    }, 1200);
+  </script>
+</body>
+</html>
