@@ -179,7 +179,7 @@
       height: 70px;
       z-index: 5;
       will-change: transform;
-      color: #00e5ff; /* Default color */
+      color: #00e5ff;
       filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 15px currentColor);
     }
 
@@ -211,7 +211,7 @@
       <!-- Bottom GMod Loading HUD -->
       <div class="loading-card">
         <div id="server-name" class="server-name">Connecting to Server...</div>
-        <div id="map-name" class="map-name">MAP: gm_construct</div>
+        <div id="map-name" class="map-name">MAP: Loading...</div>
         <div id="status-text" class="status-text">Retrieving server info...</div>
         
         <div class="progress-container">
@@ -228,13 +228,11 @@
     <!-- SVG DVD Logo -->
     <div id="dvd-container">
       <svg viewBox="0 0 300 150">
-        <!-- DVD Text -->
         <g>
           <path d="M 20,20 L 60,20 C 85,20 95,35 95,50 C 95,65 85,80 60,80 L 20,80 Z M 40,35 L 40,65 L 55,65 C 70,65 75,58 75,50 C 75,42 70,35 55,35 Z" />
           <path d="M 90,20 L 115,20 L 135,70 L 155,20 L 180,20 L 148,80 L 122,80 Z" />
           <path d="M 175,20 L 215,20 C 240,20 250,35 250,50 C 250,65 240,80 215,80 L 175,80 Z M 195,35 L 195,65 L 210,65 C 225,65 230,58 230,50 C 230,42 225,35 210,35 Z" />
         </g>
-        <!-- Disc Ellipse & VIDEO text -->
         <path d="M 20,95 Q 135,120 250,95 Q 135,108 20,95 Z"/>
         <ellipse cx="135" cy="105" rx="120" ry="20" fill="none" stroke="currentColor" stroke-width="5"/>
         <text x="135" y="110" font-family="'Courier New', monospace" font-weight="900" font-size="16" text-anchor="middle" letter-spacing="6">VIDEO</text>
@@ -264,7 +262,6 @@
         if (!AudioCtx) return;
         const ctx = new AudioCtx();
         
-        // Synth chime chord for corner hit
         const freqs = [523.25, 659.25, 783.99, 1046.50]; // C Major
         freqs.forEach((f, i) => {
           const osc = ctx.createOscillator();
@@ -280,9 +277,7 @@
           osc.start(ctx.currentTime + (i * 0.05));
           osc.stop(ctx.currentTime + 0.7 + (i * 0.05));
         });
-      } catch(e) {
-        // Audio might be blocked until user gesture, fail silently
-      }
+      } catch(e) {}
     }
 
     /* ===================================================
@@ -317,7 +312,6 @@
     }
 
     function resetVelocity() {
-      // Return to a nice natural angle after corner hit
       vx = (vx > 0 ? 1 : -1) * baseSpeed;
       vy = (vy > 0 ? 1 : -1) * (baseSpeed * (0.6 + Math.random() * 0.4));
     }
@@ -330,20 +324,16 @@
       const maxW = W - w;
       const maxH = H - h;
 
-      // Trigger "Corner Aiming Mode" randomly every 4-8 bounces
       if (bounceCount >= 5 && !cornerMode && Math.random() < 0.35) {
         cornerMode = true;
         bounceCount = 0;
 
-        // Choose target corner based on current directional vectors
         const targetX = vx > 0 ? maxW : 0;
         const targetY = vy > 0 ? maxH : 0;
 
         const dx = targetX - posX;
         const dy = targetY - posY;
 
-        // Math: Set vy so that time-to-X-wall (dx/vx) equals time-to-Y-wall (dy/vy)
-        // vy = (dy / dx) * vx
         if (Math.abs(dx) > 20 && Math.abs(dy) > 20) {
           vy = (dy / dx) * vx;
         }
@@ -355,7 +345,6 @@
       let hitX = false;
       let hitY = false;
 
-      // X-axis wall collision
       if (posX <= 0) {
         posX = 0;
         vx = -vx;
@@ -366,7 +355,6 @@
         hitX = true;
       }
 
-      // Y-axis wall collision
       if (posY <= 0) {
         posY = 0;
         vy = -vy;
@@ -377,34 +365,27 @@
         hitY = true;
       }
 
-      // Handle bounce events
       if (hitX && hitY) {
-        // --- CORNER HIT! ---
         changeColor();
         triggerCornerHit();
         cornerMode = false;
         resetVelocity();
       } else if (hitX || hitY) {
-        // Regular single-wall bounce
         changeColor();
         bounceCount++;
         if (cornerMode) {
-          // Reset velocity if it bounced on a side wall before reaching corner
           cornerMode = false;
           resetVelocity();
         }
       }
 
-      // Apply transform
       dvd.style.transform = `translate3d(${posX}px, ${posY}px, 0)`;
 
       requestAnimationFrame(animate);
     }
 
-    // Start DVD loop
     requestAnimationFrame(animate);
 
-    // Keep logo inside bounds on browser resize
     window.addEventListener('resize', () => {
       posX = Math.min(posX, window.innerWidth - dvd.offsetWidth);
       posY = Math.min(posY, window.innerHeight - dvd.offsetHeight);
@@ -415,30 +396,41 @@
     =================================================== */
     let totalFilesNeeded = 0;
     let filesDownloaded = 0;
+    let isRealGmod = false; // Flag to prevent Demo Mode from overwriting real server data
 
     function GameDetails(servername, serverurl, mapname, maxplayers, steamid, gamemode) {
+      isRealGmod = true;
       if (servername) document.getElementById('server-name').innerText = servername;
       if (mapname) document.getElementById('map-name').innerText = 'MAP: ' + mapname;
     }
 
     function SetFilesNeeded(needed) {
+      isRealGmod = true;
       totalFilesNeeded = needed;
       updateProgress();
     }
 
     function SetFilesTotal(total) {
+      isRealGmod = true;
       totalFilesNeeded = total;
       updateProgress();
     }
 
     function DownloadingFile(fileName) {
+      isRealGmod = true;
       filesDownloaded++;
       document.getElementById('status-text').innerText = 'DOWNLOADING: ' + fileName;
       updateProgress();
     }
 
     function SetStatusChanged(status) {
-      document.getElementById('status-text').innerText = status;
+      isRealGmod = true;
+      // When GMod finishes downloading and sends client info to join the game
+      if (status.toLowerCase().includes("sending client info")) {
+        document.getElementById('status-text').innerText = 'DOWNLOAD FINISHED - Joining Server...';
+      } else {
+        document.getElementById('status-text').innerText = status;
+      }
     }
 
     function updateProgress() {
@@ -446,6 +438,13 @@
       if (totalFilesNeeded > 0) {
         percent = Math.min(100, Math.floor((filesDownloaded / totalFilesNeeded) * 100));
       }
+
+      // If all files are downloaded, display finished status
+      if (totalFilesNeeded > 0 && filesDownloaded >= totalFilesNeeded) {
+        percent = 100;
+        document.getElementById('status-text').innerText = 'DOWNLOAD FINISHED - Joining Server...';
+      }
+
       document.getElementById('progress-bar').style.width = percent + '%';
       document.getElementById('progress-percent').innerText = percent + '%';
       document.getElementById('file-count').innerText = `${filesDownloaded} / ${totalFilesNeeded} FILES`;
@@ -453,10 +452,11 @@
 
     /* ===================================================
        5. STANDALONE BROWSER DEMO MODE
-       (Simulates GMod loading if opened outside GMod)
+       (Simulates loading ONLY if opened in a normal web browser)
     =================================================== */
     setTimeout(() => {
-      if (totalFilesNeeded === 0) {
+      // If none of the GMod hooks were triggered, run standalone preview mode
+      if (!isRealGmod) {
         GameDetails("Retro DarkRP 1999 | Vintage Roleplay", "", "rp_downtown_v4c_v2", "32", "0", "darkrp");
         SetFilesTotal(35);
         
@@ -481,7 +481,7 @@
           }
         }, 800);
       }
-    }, 1200);
+    }, 1500);
   </script>
 </body>
 </html>
